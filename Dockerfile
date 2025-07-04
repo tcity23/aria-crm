@@ -1,50 +1,26 @@
 FROM php:8.2-apache
 
-# Enable Apache rewrite module
+# Enable Apache mod_rewrite
 RUN a2enmod rewrite
 
 # Set working directory
 WORKDIR /var/www/html
 
-# Install system dependencies
+# Copy app files
+COPY . /var/www/html
+
+# Install dependencies
 RUN apt-get update && apt-get install -y \
     unzip \
-    libzip-dev \
-    libpng-dev \
-    libjpeg-dev \
-    libfreetype6-dev \
-    libonig-dev \
-    libxml2-dev \
-    zip \
     git \
-    curl \
     libldap2-dev \
-    libicu-dev \
-    libmcrypt-dev \
-    libpq-dev \
-    libxslt-dev \
-    && docker-php-ext-configure zip \
-    && docker-php-ext-install \
-        pdo \
-        pdo_mysql \
-        mysqli \
-        gd \
-        mbstring \
-        zip \
-        exif \
-        intl \
-        ldap \
-        opcache
+    && docker-php-ext-install ldap
 
-# Copy project files
-COPY . /var/www/html/
+# Install Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Fix file permissions
-RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 755 /var/www/html
+# Run Composer install
+RUN composer install --no-dev --optimize-autoloader
 
-# Enable .htaccess usage
-RUN sed -i '/<Directory \/var\/www\/>/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf
-
-# Expose port (Railway does this automatically, but for local dev)
-EXPOSE 80
+# Set file permissions (optional but recommended)
+RUN chown -R www-data:www-data /var/www/html
